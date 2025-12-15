@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상하이 3박 4일 부녀 여행 다이어리</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the diary app look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+            line-height: 1.6;
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <!-- Main Diary Container -->
+    <div class="max-w-4xl mx-auto bg-white shadow-xl rounded-2xl overflow-hidden">
+        
+        <!-- Header Section -->
+        <header class="bg-indigo-600 p-6 text-white text-center rounded-t-2xl">
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                📝 상하이 3박 4일 부녀 여행
+            </h1>
+            <p class="text-indigo-200 text-lg">2025.12.17 ~ 12.20</p>
+        </header>
+
+        <!-- Diary Content Section -->
+        <main id="diary-container" class="p-4 sm:p-6 lg:p-8 space-y-8"></main>
+
+    </div>
+
+    <script>
+        // Travel itinerary data
+        const itinerary = [
+            {
+                day: 1,
+                date: "12/17",
+                theme: "도착과 푸동/와이탄의 밤",
+                items: [
+                    { time: "15:00", activity: "공항 출발 → 롱양루역", detail: "자기부상열차 탑승 (8분). 상하이 도착!", emoji: "🚝" },
+                    { time: "15:55", activity: "난징동루역 짐 보관", detail: "홀가분하게 여행 시작!", emoji: "🎒" },
+                    { time: "16:30", activity: "[간단 식사] 두오지구 지엔빙", detail: "중국식 크레페 '지엔빙'으로 출출함 달래기.", emoji: "🥟" },
+                    { time: "18:00", activity: "와이탄 (外滩) 야경 감상", detail: "황푸강을 따라 유럽풍 건축물과 푸동 스카이라인 구경.", emoji: "🌃" },
+                    { time: "19:30", activity: "[저녁 식사] 하이디라오 (海底捞)", detail: "(메인) 훠궈 체험. (예비) 경운하/그랜드마더.", emoji: "🥢" },
+                    { time: "21:30", activity: "호텔 복귀", detail: "지하철 10호선 탑승 후 휴식.", emoji: "🛌" }
+                ]
+            },
+            {
+                day: 2,
+                date: "12/18",
+                theme: "올드 상하이와 유럽 감성",
+                items: [
+                    { time: "10:50", activity: "예원(豫园) & 구시가지", detail: "전통 정원과 오래된 상점 구경. 상하이의 옛 모습 느껴보기.", emoji: "⛩️" },
+                    { time: "12:50", activity: "[점심 식사] 남상만두 (南翔馒头店)", detail: "육즙 가득한 샤오롱바오 맛집 체험.", emoji: "🥟" },
+                    { time: "14:00", activity: "신천지 (新天地)", detail: "유럽풍 건축의 이국적인 거리 산책.", emoji: "☕" },
+                    { time: "16:30", activity: "대한민국 임시정부 청사", detail: "아버님과 함께 의미 있는 역사적 장소 방문.", emoji: "🇰🇷" },
+                    { time: "18:00", activity: "[저녁 식사] 점도덕 (點都德)", detail: "광둥식 딤섬 전문점에서 저녁 식사.", emoji: "🍤" },
+                    { time: "19:30", activity: "M&M 월드 상하이", detail: "난징동루 근처 M&M 캐릭터샵 구경 및 기념품 쇼핑.", emoji: "🍫" },
+                    { time: "20:30", activity: "와이탄 강변 야경 도보 투어", detail: "강변을 따라 황푸공원까지 산책하며 푸동 야경 감상.", emoji: "🌉" },
+                    { time: "21:30", activity: "호텔 복귀", detail: "", emoji: "🛌" }
+                ]
+            },
+            {
+                day: 3,
+                date: "12/19",
+                theme: "푸동 뷰, 유럽 조계지, 크리스마스",
+                items: [
+                    { time: "11:00", activity: "[점심 식사] 평양식당 고려관", detail: "평양냉면, 온반 등 북한 음식 체험.", emoji: "🍜" },
+                    { time: "13:30", activity: "도운서점 (상하이 타워 52층)", detail: "고층 빌딩에서 푸동 스카이라인을 조망하며 커피/독서. (이동 시간 고려)", emoji: "📚" },
+                    { time: "16:00", activity: "우캉멘션 / 동북사계교자왕", detail: "역사적 건물 인증샷 후 만두 맛집에서 간식/이른 저녁.", emoji: "🏡" },
+                    { time: "17:30", activity: "용캉루 (永康路) 거리 구경", detail: "유럽풍 카페와 바가 늘어선 활기찬 거리 산책.", emoji: "🍾" },
+                    { time: "20:00", activity: "[저녁 식사] 와이탄 크리스마켓", detail: "연말 분위기 가득한 마켓에서 독일식 먹거리 즐기기.", emoji: "🎅" },
+                    { time: "21:30", activity: "호텔 복귀", detail: "", emoji: "🛌" }
+                ]
+            },
+            {
+                day: 4,
+                date: "12/20",
+                theme: "여유 및 출국",
+                items: [
+                    { time: "10:00", activity: "호텔 체크아웃 및 짐 보관", detail: "", emoji: "💼" },
+                    { time: "11:00", activity: "[점심 식사] 호텔 인근", detail: "여유로운 마지막 식사.", emoji: "🍚" },
+                    { time: "13:00", activity: "푸동공항 이동 시작", detail: "지하철 및 자기부상열차를 이용해 공항으로 이동.", emoji: "✈️" },
+                    { time: "16:50", activity: "비행기 출발", detail: "즐거웠던 상하이 여행 안녕!", emoji: "🛫" }
+                ]
+            }
+        ];
+
+        const container = document.getElementById('diary-container');
+
+        // Function to render the diary
+        function renderDiary() {
+            itinerary.forEach(dayData => {
+                // Day Card Header
+                const dayHeader = `
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="text-lg font-semibold text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full shadow-md">
+                            Day ${dayData.day}
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800">${dayData.theme}</h2>
+                        <span class="text-sm text-gray-500">(${dayData.date})</span>
+                    </div>
+                `;
+                
+                // Activity List Container
+                let activityList = '<div class="space-y-4 border-l-4 border-indigo-200 pl-4 sm:pl-6">';
+
+                dayData.items.forEach(item => {
+                    // Single Activity Item
+                    const itemHtml = `
+                        <div class="relative group">
+                            <!-- Time Stamp Circle -->
+                            <div class="absolute -left-[30px] sm:-left-[35px] top-1/2 -translate-y-1/2 w-4 h-4 bg-indigo-600 rounded-full border-4 border-white shadow-md"></div>
+                            
+                            <!-- Activity Card -->
+                            <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-lg transition duration-300 transform hover:scale-[1.01]">
+                                <div class="flex items-start space-x-3">
+                                    <div class="text-2xl pt-0.5">${item.emoji}</div>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-medium text-indigo-500 mb-1">${item.time}</div>
+                                        <h3 class="text-lg font-semibold text-gray-900">${item.activity}</h3>
+                                        <p class="text-gray-600 text-sm mt-1">${item.detail}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    activityList += itemHtml;
+                });
+
+                activityList += '</div>';
+
+                // Combine and append to the main container
+                const daySection = document.createElement('section');
+                daySection.className = 'bg-white p-4 sm:p-6 rounded-2xl shadow-md border border-gray-50';
+                daySection.innerHTML = dayHeader + activityList;
+                container.appendChild(daySection);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', renderDiary);
+    </script>
+</body>
+</html>
