@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>러닝 훈련 플래너</title>
+<meta name="description" content="현재 기록과 목표 대회를 입력하면 VDOT 페이스 기반 주간 훈련표를 만들어 주는 개인용 러닝 훈련 플래너">
+<style>
+:root{
+  --bg:#f4f6f3;--card:#fff;--ink:#17211b;--sub:#5d6b62;--line:#dfe5df;
+  --brand:#1f6f4a;--brand-ink:#fff;--soft:#e6f1ea;--accent:#d9641f;
+  --e:#3b8f5f;--q:#d9641f;--l:#2f66b3;--r:#8a939b;--race:#b3261e;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#101512;--card:#19201c;--ink:#e9efea;--sub:#9aa89f;--line:#2b352f;
+  --brand:#4fb07f;--brand-ink:#0c130f;--soft:#1f2c25;--accent:#f08a4b;
+  --e:#5cbf88;--q:#f08a4b;--l:#6fa0e6;--r:#7c868d;--race:#ef6a62;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;word-break:keep-all}
+main{max-width:720px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.5rem;margin:8px 0 4px}
+h2{font-size:1.1rem;margin:0 0 12px}
+p.lead{color:var(--sub);margin:0 0 20px;font-size:.95rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+label{display:block;font-size:.85rem;color:var(--sub);margin:14px 0 6px;font-weight:600}
+label:first-child{margin-top:0}
+input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.row{display:flex;gap:8px}
+.row>*{flex:1;min-width:0}
+.time{display:flex;gap:6px;align-items:center}
+.time input{text-align:center}
+.time span{color:var(--sub);font-size:.85rem}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px}
+button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:700;width:100%;padding:13px;margin-top:18px}
+button.ghost{color:var(--sub);font-size:.85rem;padding:7px 11px}
+.err{color:var(--race);font-size:.9rem;margin-top:10px;min-height:1em}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--soft);border-radius:12px;padding:12px}
+.stat small{display:block;color:var(--sub);font-size:.78rem}
+.stat b{font-size:1.25rem}
+.note{font-size:.88rem;color:var(--sub);margin:12px 0 0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:8px 4px;border-bottom:1px solid var(--line)}
+th{color:var(--sub);font-weight:600;font-size:.8rem}
+td.num{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.weeknav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.weeknav h2{margin:0;text-align:center;flex:1}
+.weeknav small{display:block;color:var(--sub);font-weight:400;font-size:.8rem}
+.badge{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--brand);font-weight:700;vertical-align:middle}
+.day{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.day:last-of-type{border-bottom:0}
+.day .dow{width:44px;flex:none;text-align:center}
+.day .dow b{display:block}
+.day .dow small{color:var(--sub);font-size:.75rem}
+.day.today .dow b{color:var(--brand)}
+.day .body{flex:1;min-width:0}
+.day .title{font-weight:700;border-left:4px solid var(--r);padding-left:8px}
+.t-E .title{border-color:var(--e)}.t-Q .title{border-color:var(--q)}.t-L .title{border-color:var(--l)}.t-RACE .title{border-color:var(--race)}
+.day .detail{font-size:.9rem;color:var(--sub);margin-top:3px;padding-left:12px}
+.fb{display:flex;gap:6px;margin-top:8px;padding-left:12px;flex-wrap:wrap}
+.fb button{font-size:.8rem;padding:5px 10px;border-radius:99px}
+.fb button.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.adj{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:.9rem;margin-top:12px}
+.road{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;padding:10px 2px}
+.road .w{width:48px;font-weight:700;flex:none}
+.road .p{flex:1;font-size:.9rem;color:var(--sub)}
+.road .k{font-variant-numeric:tabular-nums;font-size:.9rem}
+.road.cur{background:var(--soft)}
+.bar{height:6px;border-radius:3px;background:var(--brand);opacity:.7;margin-top:4px}
+footer{color:var(--sub);font-size:.8rem;text-align:center;margin-top:24px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>🏃 러닝 훈련 플래너</h1>
+  <p class="lead">현재 기록과 목표 대회를 넣으면 대회 날까지의 주간 훈련표를 만들어 드려요. 훈련 결과를 기록하면 다음 주 강도가 자동으로 맞춰집니다.</p>
+
+  <section class="card" id="formCard">
+    <h2>내 정보 입력</h2>
+    <label>현재 기록 (최근 대회 또는 전력 기록)</label>
+    <select id="curDist">
+      <option value="5k">5K</option><option value="10k" selected>10K</option>
+      <option value="half">하프</option><option value="full">풀코스</option>
+    </select>
+    <div class="time" style="margin-top:8px">
+      <input id="curH" type="number" inputmode="numeric" min="0" max="9" placeholder="0"><span>시간</span>
+      <input id="curM" type="number" inputmode="numeric" min="0" max="59" placeholder="55"><span>분</span>
+      <input id="curS" type="number" inputmode="numeric" min="0" max="59" placeholder="00"><span>초</span>
+    </div>
+
+    <label>목표 대회</label>
+    <div class="row">
+      <select id="raceDist">
+        <option value="5k">5K</option><option value="10k">10K</option>
+        <option value="half" selected>하프</option><option value="full">풀코스</option>
+      </select>
+      <input id="raceDate" type="date">
+    </div>
+
+    <label>목표 기록 (선택)</label>
+    <div class="time">
+      <input id="goalH" type="number" inputmode="numeric" min="0" max="9" placeholder="-"><span>시간</span>
+      <input id="goalM" type="number" inputmode="numeric" min="0" max="59" placeholder="-"><span>분</span>
+      <input id="goalS" type="number" inputmode="numeric" min="0" max="59" placeholder="-"><span>초</span>
+    </div>
+
+    <div class="row">
+      <div><label>주간 훈련 일수</label>
+        <select id="days"><option value="3">주 3일</option><option value="4" selected>주 4일</option><option value="5">주 5일</option><option value="6">주 6일</option></select></div>
+      <div><label>요즘 주간 거리 (km)</label>
+        <input id="weeklyKm" type="number" inputmode="numeric" min="5" max="150" placeholder="25"></div>
+    </div>
+    <div class="err" id="err"></div>
+    <button class="primary" id="makeBtn">훈련 계획 만들기</button>
+  </section>
+
+  <div id="result" class="hidden">
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="margin:0">요약</h2>
+        <button class="ghost" id="editBtn">설정 수정</button>
+      </div>
+      <div class="stats" id="stats"></div>
+      <p class="note" id="goalNote"></p>
+    </section>
+
+    <section class="card">
+      <div class="weeknav">
+        <button id="prevW" aria-label="이전 주">‹</button>
+        <h2 id="weekTitle"></h2>
+        <button id="nextW" aria-label="다음 주">›</button>
+      </div>
+      <div id="weekBody"></div>
+      <div class="adj" id="adjNote"></div>
+    </section>
+
+    <section class="card">
+      <h2>훈련 페이스</h2>
+      <table id="paceTable"></table>
+      <p class="note">페이스는 현재 기록에서 계산한 VDOT 기준이며, 훈련 기록에 따라 조금씩 조정됩니다.</p>
+    </section>
+
+    <section class="card">
+      <h2>대회까지 로드맵</h2>
+      <div id="roadmap"></div>
+    </section>
+
+    <button class="ghost" id="resetBtn">계획 초기화</button>
+  </div>
+
+  <footer>페이스 계산은 공개된 Daniels–Gilbert VDOT 공식을 사용합니다. 일반적인 훈련 가이드이며 의학적 조언이 아닙니다. 통증이 있으면 쉬세요.</footer>
+</main>
+
+<script id="core">
+/* ===== 계산 로직 (DOM 비의존) ===== */
+const DIST={
+  '5k':{km:5,label:'5K',peak:40,long:14,taper:1},
+  '10k':{km:10,label:'10K',peak:50,long:18,taper:1},
+  'half':{km:21.0975,label:'하프',peak:60,long:24,taper:2},
+  'full':{km:42.195,label:'풀코스',peak:70,long:32,taper:2}
+};
+const DAY_FACTOR={3:0.6,4:0.8,5:1,6:1.15};
+const LAYOUT={
+  3:{1:'Q1',3:'E',6:'L'},
+  4:{1:'Q1',3:'Q2',5:'E',6:'L'},
+  5:{1:'Q1',2:'E',3:'Q2',5:'E',6:'L'},
+  6:{1:'Q1',2:'E',3:'Q2',4:'E',5:'E',6:'L'}
+};
+const PHASE_LABEL={base:'기초 다지기',build:'강화',peak:'절정',taper:'테이퍼',race:'대회 주간'};
+const FB_SCORE={easy:1,ok:0,hard:-1,miss:-1.5};
+
+function vdotFrom(distM,sec){
+  const t=sec/60,v=distM/t;
+  const vo2=-4.6+0.182258*v+0.000104*v*v;
+  const pct=0.8+0.1894393*Math.exp(-0.012778*t)+0.2989558*Math.exp(-0.1932605*t);
+  return vo2/pct;
+}
+function predict(vdot,distM){ // 초
+  let lo=distM/10,hi=distM/1;
+  for(let i=0;i<60;i++){const mid=(lo+hi)/2;if(vdotFrom(distM,mid)>vdot)lo=mid;else hi=mid;}
+  return (lo+hi)/2;
+}
+function paceAt(vdot,frac){ // 초/km
+  const vo2=vdot*frac;
+  const v=(-0.182258+Math.sqrt(0.182258*0.182258+4*0.000104*(vo2+4.6)))/(2*0.000104);
+  return 60000/v;
+}
+function paces(vdot){
+  const I=paceAt(vdot,0.975);
+  return {Eslow:paceAt(vdot,0.62),Efast:paceAt(vdot,0.70),M:predict(vdot,42195)/42.195,T:paceAt(vdot,0.88),I:I,R:I*0.93};
+}
+function fmtPace(s){s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function fmtTime(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+  return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0');}
+function parseDate(str){const a=str.split('-').map(Number);return new Date(a[0],a[1]-1,a[2]);}
+function isoDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function mondayOf(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-(x.getDay()+6)%7);return x;}
+function addDays(d,n){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x;}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function r1(v){return Math.round(v);}
+
+function buildPlan(s){
+  const D=DIST[s.raceDist];
+  const start=mondayOf(parseDate(s.startDate)),raceD=parseDate(s.raceDate),raceMon=mondayOf(raceD);
+  const N=Math.max(1,Math.round((raceMon-start)/(7*864e5))+1);
+  const raceDow=(raceD.getDay()+6)%7;
+  const baseVdot=vdotFrom(DIST[s.curDist].km*1000,s.curSec);
+
+  // 주기 나누기 (마지막 주 = 대회 주간)
+  const taperW=Math.min(D.taper,N); // 대회 주간 포함
+  const tr=N-taperW;
+  const baseW=Math.round(tr*0.35),peakW=Math.round(tr*0.25),buildW=Math.max(0,tr-baseW-peakW);
+  const phases=[];
+  for(let i=0;i<N;i++){
+    if(i===N-1)phases.push('race');
+    else if(i>=tr)phases.push('taper');
+    else if(i<baseW)phases.push('base');
+    else if(i<baseW+buildW)phases.push('build');
+    else phases.push('peak');
+  }
+
+  // 피드백 → 누적 조정 단계
+  const steps=[];let cum=0;
+  for(let w=0;w<N;w++){
+    steps.push(cum);
+    const vals=[];
+    for(let d=0;d<7;d++){const f=(s.fb||{})[w+'-'+d];if(f)vals.push(FB_SCORE[f]);}
+    if(vals.length){
+      const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+      if(avg>=0.5)cum++;else if(avg<=-0.5)cum--;
+      cum=clamp(cum,-3,2);
+    }
+  }
+
+  // 주간 거리
+  const v0=s.weeklyKm;
+  const peakV=Math.max(v0,Math.min(D.peak*DAY_FACTOR[s.days],v0*1.5+8));
+  const goalVdot=s.goalSec?vdotFrom(D.km*1000,s.goalSec):null;
+  const weeks=[];
+  for(let w=0;w<N;w++){
+    const ph=phases[w],st=steps[w];
+    const vdot=baseVdot+(st>0?st*0.4:st*0.6);
+    const P=paces(vdot);
+    let vol=Math.min(v0*Math.pow(1.08,w),peakV);
+    if(ph==='taper')vol=peakV*0.72;
+    else if(ph==='race')vol=peakV*0.45;
+    else if(w%4===3)vol*=0.8;
+    vol*=st>0?1+st*0.05:1+st*0.08;
+    const predicted=predict(vdot,D.km*1000);
+    const useGoal=goalVdot&&goalVdot-vdot<=3&&goalVdot>=vdot-1;
+    const racePace=(useGoal?s.goalSec:predicted)/D.km;
+    const ctx={ph,vol,P,D,dist:s.raceDist,racePace,recovery:(ph!=='taper'&&ph!=='race'&&w%4===3),w,days:s.days};
+    const daysArr=ph==='race'?raceWeek(ctx,raceDow,predicted,s.goalSec):normalWeek(ctx);
+    weeks.push({w,phase:ph,recovery:ctx.recovery,vdot,paces:P,step:st,
+      km:r1(daysArr.reduce((a,x)=>a+(x.type==='RACE'?0:x.km||0),0)),
+      monday:addDays(start,w*7),days:daysArr});
+  }
+  return {N,weeks,baseVdot,goalVdot,predicted:predict(baseVdot,D.km*1000),raceDow,finalStep:cum,start};
+}
+
+function rest(){return {type:'R',title:'휴식',detail:'완전 휴식 또는 가벼운 스트레칭',km:0};}
+function easy(km,P,extra){return {type:'E',title:'이지런 '+r1(km)+'km',detail:fmtPace(P.Efast)+'~'+fmtPace(P.Eslow)+'/km · 대화 가능한 편한 호흡'+(extra?' · '+extra:''),km:r1(km)};}
+
+function q1(c){
+  const P=c.P,vol=c.vol;
+  if(c.ph==='base'){const km=clamp(vol*0.2,4,10);return easy(km,P,'마지막에 100m 질주 6회');}
+  if(c.ph==='taper'){return {type:'Q',title:'가벼운 인터벌 4×400m',detail:'워밍업 2km → 400m를 '+fmtPace(P.I)+'/km 페이스로 4회 (사이 400m 조깅) → 쿨다운 2km',km:7};}
+  if(c.ph==='peak'&&c.dist==='5k'){
+    const n=clamp(r1(vol*0.05/0.4),6,12);
+    return {type:'Q',title:'스피드 인터벌 '+n+'×400m',detail:'워밍업 2km → 400m를 '+fmtPace(P.R)+'/km ('+r1(P.R*0.4)+'초)로 '+n+'회 (사이 400m 조깅) → 쿨다운 2km',km:r1(4+n*0.8)};
+  }
+  if(c.ph==='peak'&&c.dist==='10k'){
+    const n=clamp(r1(vol*0.08/1.2),3,5);
+    return {type:'Q',title:'인터벌 '+n+'×1200m',detail:'워밍업 2km → 1200m를 '+fmtPace(P.I)+'/km로 '+n+'회 (사이 3분 조깅) → 쿨다운 2km',km:r1(4+n*1.7)};
+  }
+  const n=clamp(r1(vol*0.08)+(c.ph==='peak'?1:0),3,6);
+  return {type:'Q',title:'인터벌 '+n+'×1000m',detail:'워밍업 2km → 1000m를 '+fmtPace(P.I)+'/km로 '+n+'회 (사이 400m 조깅) → 쿨다운 2km',km:r1(4+n*1.4)};
+}
+function q2(c){
+  const P=c.P,vol=c.vol;
+  if(c.ph==='base'){const tk=20*60/P.T;return {type:'Q',title:'템포런 20분',detail:'워밍업 2km → '+fmtPace(P.T)+'/km로 20분 지속 → 쿨다운 2km',km:r1(4+tk)};}
+  if(c.ph==='taper'){return {type:'Q',title:'대회 페이스 3km',detail:'워밍업 2km → 대회 페이스 '+fmtPace(c.racePace)+'/km로 3km → 쿨다운 2km',km:7};}
+  if(c.ph==='peak'&&c.dist==='full'){
+    const km=clamp(r1(vol*0.2),8,16);
+    return {type:'Q',title:'마라톤 페이스주 '+km+'km',detail:'워밍업 2km → '+fmtPace(c.racePace)+'/km로 '+km+'km → 쿨다운 1km',km:km+3};
+  }
+  if(c.ph==='peak'&&c.dist==='half'){
+    const km=clamp(r1(vol*0.15),5,10);
+    return {type:'Q',title:'하프 페이스주 '+km+'km',detail:'워밍업 2km → '+fmtPace(c.racePace)+'/km로 '+km+'km → 쿨다운 2km',km:km+4};
+  }
+  if(c.ph==='peak'&&c.dist==='5k'){const tk=20*60/P.T;return {type:'Q',title:'템포런 20분',detail:'워밍업 2km → '+fmtPace(P.T)+'/km로 20분 지속 → 쿨다운 2km',km:r1(4+tk)};}
+  const n=clamp(r1(vol*0.10/1.6),3,6);
+  return {type:'Q',title:'크루즈 인터벌 '+n+'×1.6km',detail:'워밍업 2km → 1.6km를 '+fmtPace(P.T)+'/km로 '+n+'회 (사이 1분 휴식) → 쿨다운 2km',km:r1(4+n*1.6)};
+}
+function longRun(c){
+  let km=clamp(c.vol*(c.dist==='full'?0.42:c.dist==='half'?0.35:0.3),6,c.D.long);
+  if(c.ph==='taper')km=Math.min(km,c.D.long*0.6);
+  km=r1(km);
+  let d=fmtPace(c.P.Efast)+'~'+fmtPace(c.P.Eslow)+'/km로 천천히 오래';
+  if(c.ph==='peak'&&(c.dist==='full'||c.dist==='half')&&!c.recovery){
+    const f=clamp(r1(km*0.25),2,8);d+=' · 마지막 '+f+'km는 대회 페이스 '+fmtPace(c.racePace)+'/km';
+  }
+  return {type:'L',title:'롱런 '+km+'km',detail:d,km};
+}
+function normalWeek(c){
+  const lay=LAYOUT[c.days],out=[];
+  // 주 3일: 인터벌 계열과 템포 계열을 격주로
+  const slotQ1=(c.days===3&&c.w%2===1)?q2:q1;
+  const fixed={};
+  for(const d in lay){
+    if(lay[d]==='Q1')fixed[d]=c.recovery?null:slotQ1(c);
+    else if(lay[d]==='Q2')fixed[d]=c.recovery?null:q2(c);
+    else if(lay[d]==='L')fixed[d]=longRun(c);
+  }
+  let used=0,nE=0;
+  for(const d in lay){if(fixed[d])used+=fixed[d].km;else nE++;}
+  const eKm=nE?clamp((c.vol-used)/nE,4,12):0;
+  for(let d=0;d<7;d++){
+    if(!(d in lay))out.push(rest());
+    else if(fixed[d])out.push(fixed[d]);
+    else out.push(easy(eKm,c.P,c.recovery&&lay[d]!=='E'?'회복 주간 — 강도 훈련 대신 편하게':''));
+  }
+  return out;
+}
+function raceWeek(c,rd,predicted,goalSec){
+  const out=[];
+  for(let d=0;d<7;d++){
+    if(d===rd){
+      out.push({type:'RACE',title:'🏁 '+c.D.label+' 대회',detail:'목표 페이스 '+fmtPace(c.racePace)+'/km · 예상 기록 '+fmtTime(predicted)+(goalSec?' · 목표 '+fmtTime(goalSec):''),km:c.D.km});
+    }else if(d>rd){
+      out.push({type:'R',title:'회복',detail:'충분히 쉬고, 걷기나 스트레칭만',km:0});
+    }else if(d===rd-1){
+      out.push({type:'E',title:'가벼운 조깅 3km',detail:'아주 편하게 · 100m 질주 3~4회로 몸 깨우기',km:3});
+    }else if(d===rd-3||(rd<3&&d===0&&rd===2)){
+      out.push({type:'Q',title:'컨디션 점검 3×400m',detail:'워밍업 2km → 400m를 대회 페이스보다 살짝 빠르게 3회 (사이 400m 조깅) → 쿨다운 1km',km:5});
+    }else if(d===rd-5&&c.days>=4){
+      out.push(easy(clamp(c.vol*0.25,4,8),c.P));
+    }else out.push(rest());
+  }
+  return out;
+}
+function assessGoal(plan,goalSec){
+  if(!goalSec)return '';
+  const gap=plan.goalVdot-plan.baseVdot,room=plan.N*0.15;
+  if(gap<=-0.5)return '목표 기록이 현재 실력보다 여유 있어요. 더 높은 목표도 노려볼 만합니다.';
+  if(gap<=Math.max(0.5,room*0.5))return '현재 흐름이라면 충분히 달성 가능한 목표예요.';
+  if(gap<=Math.max(1.5,room))return '도전적이지만 훈련을 꾸준히 소화하면 노려볼 수 있는 목표예요.';
+  return '남은 기간에 비해 목표가 꽤 높아요. 훈련 페이스는 현재 실력 기준으로 잡았으니 무리하지 말고, 중간 목표를 하나 두는 걸 권해요.';
+}
+if(typeof module!=='undefined')module.exports={vdotFrom,predict,paces,buildPlan,fmtPace,fmtTime,assessGoal,isoDate};
+</script>
+
+<script>
+/* ===== 화면 ===== */
+const KEY='run-planner-v1';
+const DOW=['월','화','수','목','금','토','일'];
+const $=id=>document.getElementById(id);
+let state=null,viewW=0;
+
+function load(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null;}catch(e){return null;}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function clearSaved(){try{localStorage.removeItem(KEY);}catch(e){}}
+
+function readTime(p,optional){
+  const h=$(p+'H').value,m=$(p+'M').value,s=$(p+'S').value;
+  if(optional&&h===''&&m===''&&s==='')return null;
+  return (+h||0)*3600+(+m||0)*60+(+s||0);
+}
+function writeTime(p,sec){
+  if(sec==null)return;
+  $(p+'H').value=Math.floor(sec/3600)||'';$(p+'M').value=Math.floor(sec%3600/60);$(p+'S').value=sec%60;
+}
+function today(){const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate());}
+
+$('makeBtn').onclick=()=>{
+  const err=$('err');err.textContent='';
+  const curSec=readTime('cur'),goalSec=readTime('goal',true);
+  const curDist=$('curDist').value,raceDist=$('raceDist').value,raceDate=$('raceDate').value;
+  if(!curSec||curSec<600){err.textContent='현재 기록을 입력해 주세요.';return;}
+  const paceNow=curSec/DIST[curDist].km;
+  if(paceNow<150||paceNow>720){err.textContent='현재 기록을 다시 확인해 주세요. (km당 2:30~12:00 범위)';return;}
+  if(!raceDate){err.textContent='대회 날짜를 선택해 주세요.';return;}
+  if(parseDate(raceDate)<today()){err.textContent='대회 날짜가 오늘보다 이전이에요.';return;}
+  if((parseDate(raceDate)-today())/864e5>371){err.textContent='대회 날짜는 1년 이내로 선택해 주세요.';return;}
+  if(goalSec!==null&&(goalSec/DIST[raceDist].km<150||goalSec/DIST[raceDist].km>720)){err.textContent='목표 기록을 다시 확인해 주세요.';return;}
+  const days=+$('days').value;
+  const weeklyKm=clamp(+$('weeklyKm').value||({3:15,4:22,5:30,6:40})[days],5,150);
+  const keep=state&&state.startDate&&state.raceDate===raceDate;
+  state={curDist,curSec,raceDist,raceDate,goalSec,days,weeklyKm,
+    startDate:keep?state.startDate:isoDate(today()),fb:keep?state.fb:{}};
+  save();viewW=-1;render();
+  $('result').scrollIntoView({behavior:'smooth'});
+};
+$('editBtn').onclick=()=>{$('formCard').classList.remove('hidden');$('formCard').scrollIntoView({behavior:'smooth'});};
+$('resetBtn').onclick=()=>{
+  if($('resetBtn').dataset.sure){clearSaved();state=null;$('result').classList.add('hidden');$('formCard').classList.remove('hidden');delete $('resetBtn').dataset.sure;$('resetBtn').textContent='계획 초기화';window.scrollTo(0,0);}
+  else{$('resetBtn').dataset.sure='1';$('resetBtn').textContent='한 번 더 누르면 계획과 기록이 모두 삭제됩니다';}
+};
+$('prevW').onclick=()=>{viewW--;render();};
+$('nextW').onclick=()=>{viewW++;render();};
+
+function currentWeek(plan){
+  return clamp(Math.round((mondayOf(today())-plan.start)/(7*864e5)),0,plan.N-1);
+}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+function render(){
+  if(!state)return;
+  const plan=buildPlan(state),cw=currentWeek(plan);
+  if(viewW<0)viewW=cw;
+  viewW=clamp(viewW,0,plan.N-1);
+  const wk=plan.weeks[viewW],D=DIST[state.raceDist];
+  $('formCard').classList.add('hidden');$('result').classList.remove('hidden');
+
+  const dday=Math.round((parseDate(state.raceDate)-today())/864e5);
+  const nowW=plan.weeks[cw];
+  $('stats').innerHTML=
+    '<div class="stat"><small>현재 VDOT</small><b>'+nowW.vdot.toFixed(1)+'</b></div>'+
+    '<div class="stat"><small>대회까지</small><b>'+(dday>0?'D-'+dday:dday===0?'D-DAY':'종료')+'</b></div>'+
+    '<div class="stat"><small>'+D.label+' 예상 기록</small><b>'+fmtTime(predict(nowW.vdot,D.km*1000))+'</b></div>'+
+    '<div class="stat"><small>목표 기록</small><b>'+(state.goalSec?fmtTime(state.goalSec):'-')+'</b></div>';
+  $('goalNote').textContent=assessGoal(plan,state.goalSec);
+
+  $('weekTitle').innerHTML=(viewW+1)+'주차 <span class="badge">'+PHASE_LABEL[wk.phase]+(wk.recovery?' · 회복':'')+'</span>'+
+    (viewW===cw?' <span class="badge">이번 주</span>':'')+
+    '<small>'+(wk.monday.getMonth()+1)+'/'+wk.monday.getDate()+' 시작 · 약 '+wk.km+'km</small>';
+  $('prevW').disabled=viewW===0;$('nextW').disabled=viewW===plan.N-1;
+
+  const t=today().getTime();let html='';
+  wk.days.forEach((x,d)=>{
+    const date=addDays(wk.monday,d),isToday=date.getTime()===t;
+    const canFb=x.type!=='R'&&date.getTime()<=t;
+    const cur=state.fb[viewW+'-'+d];
+    html+='<div class="day t-'+x.type+(isToday?' today':'')+'"><div class="dow"><b>'+DOW[d]+'</b><small>'+(date.getMonth()+1)+'/'+date.getDate()+'</small></div>'+
+      '<div class="body"><div class="title">'+esc(x.title)+'</div><div class="detail">'+esc(x.detail)+'</div>'+
+      (canFb?'<div class="fb">'+[['easy','쉬웠어요'],['ok','적당했어요'],['hard','힘들었어요'],['miss','못 했어요']].map(o=>
+        '<button data-k="'+viewW+'-'+d+'" data-v="'+o[0]+'"'+(cur===o[0]?' class="on"':'')+'>'+o[1]+'</button>').join('')+'</div>':'')+
+      '</div></div>';
+  });
+  $('weekBody').innerHTML=html;
+  $('weekBody').querySelectorAll('.fb button').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k;
+    if(state.fb[k]===b.dataset.v)delete state.fb[k];else state.fb[k]=b.dataset.v;
+    save();render();
+  });
+
+  // 조정 안내
+  const nextStep=viewW<plan.N-1?plan.weeks[viewW+1].step:plan.finalStep,diff=nextStep-wk.step;
+  const has=wk.days.some((x,d)=>state.fb[viewW+'-'+d]);
+  let msg;
+  if(viewW===plan.N-1)msg='대회 주간입니다. 컨디션 관리에 집중하세요.';
+  else if(!has)msg='훈련을 마치면 느낌을 기록해 주세요. 기록에 따라 다음 주 강도가 자동으로 조절됩니다.';
+  else if(diff>0)msg='⬆️ 이번 주가 수월했네요. 다음 주는 페이스를 조금 올리고 거리를 약 5% 늘립니다.';
+  else if(diff<0)msg='⬇️ 이번 주가 버거웠네요. 다음 주는 페이스를 늦추고 거리를 약 8% 줄입니다.';
+  else msg='➡️ 지금 강도가 잘 맞아요. 다음 주는 계획대로 진행합니다.';
+  $('adjNote').textContent=msg;
+
+  const P=wk.paces;
+  $('paceTable').innerHTML='<tr><th>구분</th><th>페이스 (/km)</th><th>용도</th></tr>'+
+    [['이지 (E)',fmtPace(P.Efast)+' ~ '+fmtPace(P.Eslow),'조깅 · 롱런 · 회복'],
+     ['마라톤 (M)',fmtPace(P.M),'마라톤 페이스주'],
+     ['템포 (T)',fmtPace(P.T),'템포런 · 크루즈 인터벌'],
+     ['인터벌 (I)',fmtPace(P.I),'1000m 안팎 인터벌'],
+     ['반복 (R)',fmtPace(P.R),'400m 스피드 훈련']]
+    .map(r=>'<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('');
+
+  const maxKm=Math.max.apply(null,plan.weeks.map(w=>w.km))||1;
+  $('roadmap').innerHTML=plan.weeks.map(w=>
+    '<button class="road'+(w.w===viewW?' cur':'')+'" data-w="'+w.w+'"><span class="w">'+(w.w+1)+'주</span>'+
+    '<span class="p">'+PHASE_LABEL[w.phase]+(w.recovery?' · 회복':'')+(w.w===cw?' · 이번 주':'')+
+    '<div class="bar" style="width:'+Math.max(6,w.km/maxKm*100)+'%"></div></span>'+
+    '<span class="k">'+w.km+'km</span></button>').join('');
+  $('roadmap').querySelectorAll('.road').forEach(b=>b.onclick=()=>{viewW=+b.dataset.w;render();$('weekTitle').scrollIntoView({behavior:'smooth',block:'center'});});
+}
+
+// 시작
+(function init(){
+  $('raceDate').min=isoDate(today());
+  state=load();
+  if(state&&state.raceDate&&state.curSec){
+    $('curDist').value=state.curDist;writeTime('cur',state.curSec);
+    $('raceDist').value=state.raceDist;$('raceDate').value=state.raceDate;
+    writeTime('goal',state.goalSec);$('days').value=state.days;$('weeklyKm').value=state.weeklyKm;
+    state.fb=state.fb||{};viewW=-1;render();
+  }else state=null;
+})();
+</script>
+</body>
+</html>
