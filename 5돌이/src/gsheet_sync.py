@@ -29,7 +29,9 @@ SIGNAL_KO = {"date": "기준일", "code": "종목코드", "name": "종목", "mar
              "touch_buy1": "1차매수 터치", "touch_buy2": "2차매수 터치",
              "touch_sell": "5일선 터치", "status": "상태"}
 
-PCT_KEYS = ["gap", "buy1_pct", "buy2_pct", "sell_pct"]   # 이격률, 1차/2차/5일선 종가대비
+PCT_KEYS = ["gap", "buy1_pct", "buy2_pct", "sell_pct"]   # 이격률, 1차/2차/5일선 종가대비 → -16.2%
+WON_KEYS = ["close", "low", "high", "ma5", "pred_ma5", "buy1", "buy2", "sell",
+            "prev_buy1", "prev_buy2", "prev_sell"]           # 가격 → 3,610
 
 
 def read_csv(name):
@@ -82,14 +84,15 @@ class Sheet:
         d = self._call("GET", "?fields=sheets.properties.title,sheets.properties.sheetId")
         return {x["properties"]["title"]: x["properties"]["sheetId"] for x in d["sheets"]}
 
-    def format_percent(self, tab, cols):
-        """열 전체(머리글 제외)에 -16.2% 형식 적용. 새로 추가되는 행에도 그대로 적용된다."""
+    def format_columns(self, tab, formats):
+        """formats: [(열 번호, 형식 종류, 패턴)]. 열 전체(머리글 제외)에 적용되어
+        새로 추가되는 행에도 그대로 적용된다."""
         sid = self.sheet_ids()[tab]
         reqs = [{"repeatCell": {
             "range": {"sheetId": sid, "startRowIndex": 1,
                       "startColumnIndex": c, "endColumnIndex": c + 1},
-            "cell": {"userEnteredFormat": {"numberFormat": {"type": "PERCENT", "pattern": "0.0%"}}},
-            "fields": "userEnteredFormat.numberFormat"}} for c in cols]
+            "cell": {"userEnteredFormat": {"numberFormat": {"type": kind, "pattern": pattern}}},
+            "fields": "userEnteredFormat.numberFormat"}} for c, kind, pattern in formats]
         self._call("POST", ":batchUpdate", json={"requests": reqs})
 
     def get(self, tab, a1, render="UNFORMATTED_VALUE"):
@@ -140,9 +143,11 @@ def run(session, sheet_id):
     n1 = sync_log(sh, "상한가DB", read_csv("upper_limit.csv"), UPPER_KO)
     n2 = sync_log(sh, "매매가이력", signals, SIGNAL_KO)
     n3 = sync_latest(sh, "매매가", [r for r in signals if r["date"] == latest_date], SIGNAL_KO)
-    pct_cols = [list(SIGNAL_KO).index(k) for k in PCT_KEYS]
+    keys = list(SIGNAL_KO)
+    formats = ([(keys.index(k), "PERCENT", "0.0%") for k in PCT_KEYS]
+               + [(keys.index(k), "NUMBER", "#,##0") for k in WON_KEYS])
     for tab in ("매매가", "매매가이력"):
-        sh.format_percent(tab, pct_cols)
+        sh.format_columns(tab, formats)
     print(f"시트 반영: 상한가DB +{n1}행, 매매가이력 +{n2}행, 매매가 {n3}행")
 
 
