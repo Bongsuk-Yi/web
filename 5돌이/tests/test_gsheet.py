@@ -15,6 +15,12 @@ class Fake:
     def clear(self, *a): raise AssertionError("지우기 금지")
 
 
+class FakeLatest:
+    def __init__(self): self.t = {"매매가": [["옛 머리글"], ["2026-11-12", "x"]]}
+    def clear(self, tab): self.t[tab] = []
+    def put(self, tab, rows): self.t[tab] = [list(r) for r in rows]
+
+
 recs = [{"date": "2026-11-13", "market": "코스피", "code": "002880", "name": "디와이에이"},
         {"date": "2026-11-12", "market": "코스닥", "code": "301300", "name": "바이브컴퍼니"}]
 
@@ -38,8 +44,15 @@ recs.append({"date": "2026-11-16", "market": "코스피", "code": "000001", "nam
 assert g.sync_log(sh, "상한가DB", recs, g.UPPER_KO) == 1
 assert sh.t["상한가DB"][:3] == before and sh.t["상한가DB"][3][0] == "2026-11-16"
 
-# 사용자가 직접 적어둔 내용이 있어도 지우지 않고 아래에 추가
-sh = Fake({"매매가": [["내 메모"], ["2026-11-13", "x"]]})
-assert g.sync_log(sh, "매매가", [{"date": "2026-11-16", "code": "000001"}], g.SIGNAL_KO) == 1
-assert sh.t["매매가"][0] == ["내 메모"] and sh.t["매매가"][2][0] == "2026-11-16"
-print("OK - 시트 APPEND")
+# 사용자가 직접 적어둔 내용이 있어도 누적 탭은 지우지 않고 아래에 추가
+sh = Fake({"매매가이력": [["내 메모"], ["2026-11-13", "x"]]})
+assert g.sync_log(sh, "매매가이력", [{"date": "2026-11-16", "code": "000001"}], g.SIGNAL_KO) == 1
+assert sh.t["매매가이력"][0] == ["내 메모"] and sh.t["매매가이력"][2][0] == "2026-11-16"
+
+# 매매가 탭: 당일치만 남고 어제 행은 사라진다. 오늘 값이 없으면 건드리지 않는다
+fl = FakeLatest()
+today = [{"date": "2026-11-16", "code": "000001"}, {"date": "2026-11-16", "code": "000002"}]
+assert g.sync_latest(fl, "매매가", today, g.SIGNAL_KO) == 2
+assert [r[0] for r in fl.t["매매가"]] == ["기준일", "2026-11-16", "2026-11-16"]
+assert g.sync_latest(fl, "매매가", [], g.SIGNAL_KO) == 0 and len(fl.t["매매가"]) == 3
+print("OK - 시트 APPEND / 당일치 교체")
