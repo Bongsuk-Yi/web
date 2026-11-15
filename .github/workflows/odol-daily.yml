@@ -29,7 +29,9 @@ jobs:
           python 5돌이/tests/test_rules.py
           python 5돌이/tests/test_parse.py
       - name: 일일 배치
-        run: python 5돌이/src/run_daily.py
+        run: |
+          python 5돌이/src/run_daily.py
+          python 5돌이/src/_debug.py
       - name: 데이터 커밋
         run: |
           git config user.name "github-actions[bot]"
