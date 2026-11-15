@@ -32,6 +32,7 @@ SIGNAL_KO = {"date": "기준일", "code": "종목코드", "name": "종목", "mar
 PCT_KEYS = ["gap", "buy1_pct", "buy2_pct", "sell_pct"]   # 이격률, 1차/2차/5일선 종가대비 → -16.2%
 WON_KEYS = ["close", "low", "high", "ma5", "pred_ma5", "buy1", "buy2", "sell",
             "prev_buy1", "prev_buy2", "prev_sell"]           # 가격 → 3,610
+UPPER_WON_KEYS = ["close", "change", "volume", "open", "high", "low"]  # 상한가DB 가격·거래량
 
 
 def read_csv(name):
@@ -148,6 +149,8 @@ def run(session, sheet_id):
                + [(keys.index(k), "NUMBER", "#,##0") for k in WON_KEYS])
     for tab in ("매매가", "매매가이력"):
         sh.format_columns(tab, formats)
+    ukeys = list(UPPER_KO)
+    sh.format_columns("상한가DB", [(ukeys.index(k), "NUMBER", "#,##0") for k in UPPER_WON_KEYS])
     print(f"시트 반영: 상한가DB +{n1}행, 매매가이력 +{n2}행, 매매가 {n3}행")
 
 
