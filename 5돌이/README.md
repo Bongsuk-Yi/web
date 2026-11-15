@@ -49,10 +49,15 @@
 - 자동: GitHub Actions `.github/workflows/odol-daily.yml` — 평일 18:40(KST), 수동 실행도 가능
 - 수동: `python 5돌이/src/run_daily.py` (파이썬 표준 라이브러리만 사용)
 
-## 구글 시트에서 불러오기
+## 구글 시트 저장
 
-```
-=IMPORTDATA("https://raw.githubusercontent.com/Bongsuk-Yi/web/main/5돌이/data/latest.csv")
-```
+배치가 끝나면 `src/gsheet_sync.py`가 구글 시트 「5dol」에 행을 직접 쌓는다.
 
-상한가 DB는 `upper_limit.csv`, 전체 이력은 `signals.csv`로 주소만 바꾸면 된다.
+| 탭 | 동작 |
+| --- | --- |
+| 상한가DB | 시트에 없는 날짜의 상한가 종목을 맨 아래에 추가 |
+| 매매가이력 | 시트에 없는 날짜의 매매가를 맨 아래에 추가 |
+| 매매가 | 최신 기준일 값으로 교체 |
+
+필요한 설정: 저장소 Secret `GSHEET_SA_KEY`(서비스 계정 JSON 키)와 시트를 서비스 계정 이메일에 편집자로 공유.
+시트 ID는 `config.json`의 `gsheet_id`. Secret이 없으면 이 단계는 건너뛴다.
