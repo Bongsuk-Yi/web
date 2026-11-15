@@ -1,6 +1,6 @@
 {
  "date": "2026-11-13",
- "generated_at": "2026-11-15 11:26 KST",
+ "generated_at": "2026-11-15 11:34 KST",
  "config": {
   "watch_days": 5,
   "buy1_ratio": 0.9385,
@@ -8,7 +8,8 @@
   "tick_mode": "sheet",
   "gap_near": 0.05,
   "gap_wait": 0.1,
-  "exclude_codes": []
+  "exclude_codes": [],
+  "gsheet_id": "1BWB7XD5HFMamxlnHUBA-K9vNiNyaPnhPYVxMdv4mpY4"
  },
  "signals": [
   {
