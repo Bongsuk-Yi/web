@@ -30,7 +30,7 @@
 ## 구성
 
 ```
-5돌이/
+5dol/
 ├─ index.html          감시 Dashboard (data/latest.json 표시)
 ├─ config.json         비율·감시일수·제외종목
 ├─ src/rules.py        매매 규칙(순수 계산)
@@ -47,7 +47,7 @@
 ## 실행
 
 - 자동: GitHub Actions `.github/workflows/odol-daily.yml` — 평일 18:40(KST), 수동 실행도 가능
-- 수동: `python 5돌이/src/run_daily.py` (파이썬 표준 라이브러리만 사용)
+- 수동: `python 5dol/src/run_daily.py` (파이썬 표준 라이브러리만 사용)
 
 ## 구글 시트 저장
 
