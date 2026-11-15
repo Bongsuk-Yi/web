@@ -1,0 +1,17 @@
+{
+ "date": "2026-11-13",
+ "generated_at": "2026-11-15 11:21 KST",
+ "config": {
+  "watch_days": 5,
+  "buy1_ratio": 0.9385,
+  "buy2_ratio": 0.948,
+  "tick_mode": "sheet",
+  "gap_near": 0.05,
+  "gap_wait": 0.1,
+  "exclude_codes": []
+ },
+ "signals": [],
+ "upper_today": [],
+ "upper_recent": [],
+ "errors": []
+}
