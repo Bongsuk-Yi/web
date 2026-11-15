@@ -150,7 +150,9 @@ def run(session, sheet_id):
     for tab in ("매매가", "매매가이력"):
         sh.format_columns(tab, formats)
     ukeys = list(UPPER_KO)
-    sh.format_columns("상한가DB", [(ukeys.index(k), "NUMBER", "#,##0") for k in UPPER_WON_KEYS])
+    sh.format_columns("상한가DB", [(ukeys.index(k), "NUMBER", "#,##0") for k in UPPER_WON_KEYS]
+                      # 등락률은 29.92 처럼 퍼센트 숫자로 저장돼 있으므로 값은 두고 % 기호만 붙인다
+                      + [(ukeys.index("pct"), "NUMBER", '0.00"%"')])
     print(f"시트 반영: 상한가DB +{n1}행, 매매가이력 +{n2}행, 매매가 {n3}행")
 
 
