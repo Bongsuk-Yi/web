@@ -1,15 +1,21 @@
-"""네이버 금융 수집 (표준 라이브러리만 사용).
+"""네이버 증권 수집 (표준 라이브러리만 사용).
 
-- 상한가 종목: https://finance.naver.com/sise/sise_upper.naver  (시트 0.금일의상한가종목 과 동일 출처)
-- 일별 시세  : fchart API, 실패 시 https://finance.naver.com/item/sise_day.naver (시트와 동일 출처)
+시트가 쓰던 finance.naver.com 의 HTML 표(sise_upper, sise_day)는 개편으로 사라져
+IMPORTHTML 이 #N/A 가 된다. 같은 데이터를 네이버 증권 JSON API 에서 가져온다.
+
+- 상한가 종목: stock.naver.com 상승률 순위 중 상한(upDownGb=1) 종목
+- 일별 시세  : fchart API, 실패 시 api.stock.naver.com 차트 API
 """
+import json
 import re
 import time
 import urllib.request
-from html.parser import HTMLParser
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
+UPPER_URL = ("https://stock.naver.com/api/domestic/market/stock/default"
+             "?tradeType=KRX&marketType=ALL&orderType=up&startIdx=0&pageSize=100")
+MARKET = {"0": "코스피", "1": "코스닥"}
 
 
 def fetch(url, retries=3):
@@ -17,72 +23,17 @@ def fetch(url, retries=3):
     for i in range(retries):
         try:
             req = urllib.request.Request(url, headers={
-                "User-Agent": UA, "Referer": "https://finance.naver.com/"})
+                "User-Agent": UA, "Referer": "https://stock.naver.com/"})
             with urllib.request.urlopen(req, timeout=20) as r:
-                raw = r.read()
-                charset = r.headers.get_content_charset()
-            for enc in [charset, "utf-8", "euc-kr", "cp949"]:
-                if not enc:
-                    continue
-                try:
-                    return raw.decode(enc)
-                except (UnicodeDecodeError, LookupError):
-                    continue
-            return raw.decode("utf-8", "replace")
+                return r.read().decode("utf-8", "replace")
         except Exception as e:  # noqa: BLE001
             last = e
             time.sleep(1.5 * (i + 1))
     raise RuntimeError(f"fetch 실패: {url} ({last})")
 
 
-class _Rows(HTMLParser):
-    """HTML의 모든 <tr>을 (셀 텍스트 리스트, 종목코드, 직전 제목) 으로 추출."""
-
-    def __init__(self):
-        super().__init__()
-        self.rows = []
-        self._cells = None
-        self._buf = None
-        self._code = None
-        self._head = None
-        self.heading = ""
-
-    def handle_starttag(self, tag, attrs):
-        if tag == "tr":
-            self._cells, self._code = [], None
-        elif tag in ("td", "th") and self._cells is not None:
-            self._buf = []
-        elif tag == "a" and self._cells is not None:
-            m = re.search(r"code=(\w{6})", dict(attrs).get("href") or "")
-            if m:
-                self._code = m.group(1)
-        elif tag in ("h3", "h4", "caption"):
-            self._head = []
-
-    def handle_endtag(self, tag):
-        if tag in ("td", "th") and self._buf is not None and self._cells is not None:
-            self._cells.append(" ".join("".join(self._buf).split()))
-            self._buf = None
-        elif tag == "tr" and self._cells is not None:
-            self.rows.append((self._cells, self._code, self.heading))
-            self._cells = None
-        elif tag in ("h3", "h4", "caption") and self._head is not None:
-            text = "".join(self._head)
-            if "코스닥" in text:
-                self.heading = "코스닥"
-            elif "코스피" in text:
-                self.heading = "코스피"
-            self._head = None
-
-    def handle_data(self, data):
-        if self._buf is not None:
-            self._buf.append(data)
-        if self._head is not None:
-            self._head.append(data)
-
-
-def _num(text, as_float=False):
-    s = re.sub(r"[^0-9.\-]", "", text or "")
+def _num(v, as_float=False):
+    s = re.sub(r"[^0-9.\-]", "", str(v if v is not None else ""))
     if s in ("", "-", "."):
         return None
     try:
@@ -91,31 +42,33 @@ def _num(text, as_float=False):
         return None
 
 
-def parse_upper(html):
-    """상한가 페이지 → [{market, code, name, streak, total, close, change, pct, volume, open, high, low}]"""
-    p = _Rows()
-    p.feed(html)
-    out, seen = [], set()
-    for cells, code, market in p.rows:
-        # 열: N, 연속, 누적, 종목명, 현재가, 전일비, 등락률, 거래량, 시가, 고가, 저가, PER
-        if not code or len(cells) < 11 or code in seen:
+def parse_upper(items):
+    """상승률 순위 JSON → 상한가 종목만.
+    [{market, code, name, streak, total, close, change, pct, volume, open, high, low}]"""
+    out = []
+    for it in items:
+        close, limit = _num(it.get("nowPrice")), _num(it.get("upperLimitPrice"))
+        if str(it.get("upDownGb")) != "1" and not (close and close == limit):
             continue
-        close = _num(cells[4])
-        if close is None:
-            continue
-        seen.add(code)
         out.append({
-            "market": market, "code": code, "name": cells[3],
-            "streak": _num(cells[1]), "total": _num(cells[2]),
-            "close": close, "change": _num(cells[5]),
-            "pct": _num(cells[6], as_float=True), "volume": _num(cells[7]),
-            "open": _num(cells[8]), "high": _num(cells[9]), "low": _num(cells[10]),
+            "market": MARKET.get(str(it.get("sosok")), ""),
+            "code": it.get("itemcode"), "name": it.get("itemname"),
+            "streak": _num(it.get("continualUpperLimit")),
+            "total": _num(it.get("accumUpper")),
+            "close": close, "change": _num(it.get("prevChangePrice")),
+            "pct": _num(it.get("prevChangeRate"), as_float=True),
+            "volume": _num(it.get("tradeVolume")),
+            "open": _num(it.get("openPrice")), "high": _num(it.get("highPrice")),
+            "low": _num(it.get("lowPrice")),
         })
     return out
 
 
 def get_upper_limit():
-    return parse_upper(fetch("https://finance.naver.com/sise/sise_upper.naver"))
+    items = json.loads(fetch(UPPER_URL))
+    if not isinstance(items, list) or not items:
+        raise RuntimeError("상승률 순위 응답이 비어 있습니다")
+    return parse_upper(items)
 
 
 def parse_fchart(text):
@@ -130,24 +83,22 @@ def parse_fchart(text):
     return sorted(rows, key=lambda r: r["date"])
 
 
-def parse_sise_day(html):
-    p = _Rows()
-    p.feed(html)
+def parse_chart_api(items):
     rows = []
-    for cells, _, _ in p.rows:
-        # 열: 날짜, 종가, 전일비, 시가, 고가, 저가, 거래량
-        if len(cells) < 7 or not re.fullmatch(r"\d{4}\.\d{2}\.\d{2}", cells[0]):
-            continue
-        rows.append({"date": cells[0].replace(".", "-"), "close": _num(cells[1]),
-                     "open": _num(cells[3]), "high": _num(cells[4]),
-                     "low": _num(cells[5]), "volume": _num(cells[6])})
+    for it in items:
+        d = str(it["localDate"])
+        rows.append({"date": f"{d[:4]}-{d[4:6]}-{d[6:]}",
+                     "open": _num(it.get("openPrice")), "high": _num(it.get("highPrice")),
+                     "low": _num(it.get("lowPrice")), "close": _num(it.get("closePrice")),
+                     "volume": _num(it.get("accumulatedTradingVolume"))})
     return sorted(rows, key=lambda r: r["date"])
 
 
 def get_daily(code, days=30):
     """일별 시세(과거→최근). 최근 약 days 달력일."""
-    end = time.strftime("%Y%m%d", time.gmtime(time.time() + 9 * 3600))
-    start = time.strftime("%Y%m%d", time.gmtime(time.time() + 9 * 3600 - days * 86400))
+    now = time.time() + 9 * 3600
+    end = time.strftime("%Y%m%d", time.gmtime(now))
+    start = time.strftime("%Y%m%d", time.gmtime(now - days * 86400))
     try:
         rows = parse_fchart(fetch(
             "https://fchart.stock.naver.com/siseJson.naver?symbol=%s&requestType=1"
@@ -156,4 +107,6 @@ def get_daily(code, days=30):
             return rows
     except Exception:  # noqa: BLE001
         pass
-    return parse_sise_day(fetch("https://finance.naver.com/item/sise_day.naver?code=%s&page=1" % code))
+    return parse_chart_api(json.loads(fetch(
+        "https://api.stock.naver.com/chart/domestic/item/%s/day"
+        "?startDateTime=%s&endDateTime=%s" % (code, start, end))))

@@ -3,26 +3,21 @@ import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 import naver, run_daily
 
-UPPER = """
-<div class="box_type_l"><h4 class="top_tlt"><em>코스피</em></h4>
-<table class="type_5"><tr><th>N</th><th>연속</th><th>누적</th><th>종목명</th><th>현재가</th>
-<th>전일비</th><th>등락률</th><th>거래량</th><th>시가</th><th>고가</th><th>저가</th><th>PER</th></tr>
-<tr><td class="no">1</td><td class="number">1</td><td class="number">2</td>
-<td><a href="/item/main.naver?code=002880" class="tltle">디와이에이</a></td>
-<td class="number">4,030</td><td class="number"><em><span class="blind">상한가</span></em>
-<span class="tah p11 red02">930</span></td><td class="number"><span class="tah p11 red01">+30.00%</span></td>
-<td class="number">635,297</td><td class="number">3,150</td><td class="number">4,030</td>
-<td class="number">3,100</td><td class="number">N/A</td></tr></table></div>
-<div class="box_type_l"><h4 class="top_tlt"><em>코스닥</em></h4><table class="type_5">
-<tr><td class="no">1</td><td class="number">1</td><td class="number">1</td>
-<td><a href="/item/main.naver?code=301300" class="tltle">바이브컴퍼니</a></td>
-<td class="number">2,365</td><td class="number">상한가 545</td><td class="number">+29.95%</td>
-<td class="number">649,815</td><td class="number">1,900</td><td class="number">2,365</td>
-<td class="number">1,880</td><td class="number">-3.2</td></tr></table></div>"""
-u = naver.parse_upper(UPPER)
-assert [(x["market"], x["code"], x["name"], x["close"], x["change"], x["pct"], x["low"]) for x in u] == [
-    ("코스피", "002880", "디와이에이", 4030, 930, 30.0, 3100),
-    ("코스닥", "301300", "바이브컴퍼니", 2365, 545, 29.95, 1880)], u
+ITEMS = [
+ {"itemname": "디와이에이", "itemcode": "002880", "sosok": "0", "upDownGb": "1", "upperLimitPrice": "4030",
+  "nowPrice": "4030", "openPrice": "3100", "highPrice": "4030", "lowPrice": "3075", "prevChangePrice": "930",
+  "prevChangeRate": "30.0", "tradeVolume": "641665", "continualUpperLimit": "0", "accumUpper": "1"},
+ {"itemname": "바이브컴퍼니", "itemcode": "301300", "sosok": "1", "upDownGb": "1", "upperLimitPrice": "2365",
+  "nowPrice": "2365", "openPrice": "1900", "highPrice": "2365", "lowPrice": "1880", "prevChangePrice": "545",
+  "prevChangeRate": "29.95", "tradeVolume": "649815", "continualUpperLimit": "1", "accumUpper": "2"},
+ {"itemname": "상승만", "itemcode": "000001", "sosok": "0", "upDownGb": "2", "upperLimitPrice": "1300",
+  "nowPrice": "1250", "openPrice": "1000", "highPrice": "1300", "lowPrice": "1000", "prevChangePrice": "250",
+  "prevChangeRate": "25.0", "tradeVolume": "1"},
+]
+u = naver.parse_upper(ITEMS)
+assert [(x["market"], x["code"], x["name"], x["close"], x["change"], x["pct"], x["low"], x["total"]) for x in u] == [
+    ("코스피", "002880", "디와이에이", 4030, 930, 30.0, 3075, 1),
+    ("코스닥", "301300", "바이브컴퍼니", 2365, 545, 29.95, 1880, 2)], u
 
 FCHART = """[['날짜', '시가', '고가', '저가', '종가', '거래량', '외국인소진율'],
 ["20261112", 100, 120, 95, 110, 1000, 1.5],
@@ -30,11 +25,10 @@ FCHART = """[['날짜', '시가', '고가', '저가', '종가', '거래량', '�
 d = naver.parse_fchart(FCHART)
 assert d[-1] == {"date": "2026-11-13", "open": 110, "high": 143, "low": 108, "close": 143, "volume": 2000}
 
-DAY = """<table><tr><th>날짜</th><th>종가</th><th>전일비</th><th>시가</th><th>고가</th><th>저가</th><th>거래량</th></tr>
-<tr><td><span>2026.11.13</span></td><td><span>129,500</span></td><td>상승 <span>1,000</span></td>
-<td><span>128,000</span></td><td><span>130,000</span></td><td><span>127,500</span></td><td><span>12,345</span></td></tr></table>"""
-s = naver.parse_sise_day(DAY)
-assert s == [{"date": "2026-11-13", "close": 129500, "open": 128000, "high": 130000, "low": 127500, "volume": 12345}]
+API = [{"localDate": "20261113", "closePrice": 129500.0, "openPrice": 128000.0, "highPrice": 130000.0,
+        "lowPrice": 127500.0, "accumulatedTradingVolume": 12345}]
+s = naver.parse_chart_api(API)
+assert s == [{"date": "2026-11-13", "open": 128000, "high": 130000, "low": 127500, "close": 129500, "volume": 12345}]
 
 cfg = {"buy1_ratio": 0.9385, "buy2_ratio": 0.948, "tick_mode": "sheet", "gap_near": 0.05, "gap_wait": 0.10}
 daily = [{"date": f"2026-11-{9+i:02d}", "close": c, "low": c - 100, "high": c + 100}
