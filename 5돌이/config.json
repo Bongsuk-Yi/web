@@ -1,0 +1,9 @@
+{
+  "watch_days": 5,
+  "buy1_ratio": 0.9385,
+  "buy2_ratio": 0.948,
+  "tick_mode": "sheet",
+  "gap_near": 0.05,
+  "gap_wait": 0.10,
+  "exclude_codes": []
+}

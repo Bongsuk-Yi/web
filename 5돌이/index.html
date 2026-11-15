@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>5돌이 매수 종목 감시 Dashboard</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#16202b;--sub:#627083;--line:#e1e5eb;--up:#d1362f;--down:#1f5fd0;--tag:#eef2f7;--hit:#fff4d6}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#181e26;--ink:#e8edf3;--sub:#93a0b1;--line:#2a323d;--up:#ff6b61;--down:#6ea4ff;--tag:#222b36;--hit:#3a3216}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;word-break:keep-all}
+main{max-width:1180px;margin:0 auto;padding:20px 14px 60px}
+h1{font-size:1.35rem;margin:0 0 2px}
+h2{font-size:1.02rem;margin:0 0 10px}
+.sub{color:var(--sub);font-size:.86rem;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;white-space:nowrap}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right}
+th{color:var(--sub);font-weight:600;font-size:.8rem;position:sticky;top:0;background:var(--card)}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
+td.l{text-align:left}
+tr.hit td{background:var(--hit)}
+.pct{color:var(--sub);font-size:.78rem;margin-left:4px}
+.up{color:var(--up)}.down{color:var(--down)}
+.tag{display:inline-block;background:var(--tag);border-radius:6px;padding:1px 7px;font-size:.76rem}
+a{color:inherit}
+.links a{margin-right:6px;font-size:.78rem;color:var(--sub)}
+ul{margin:0;padding-left:18px;color:var(--sub);font-size:.86rem}
+.err{color:var(--up);font-size:.85rem}
+b.code{font-weight:400;color:var(--sub);font-size:.78rem;margin-left:4px}
+</style>
+</head>
+<body>
+<main>
+<h1>5돌이 매수 종목 감시 Dashboard</h1>
+<p class="sub" id="meta">불러오는 중…</p>
+
+<div class="card">
+<h2>다음 거래일 매매가 <span class="tag" id="cnt"></span></h2>
+<div class="wrap"><table id="sig"></table></div>
+<p class="err" id="err"></p>
+</div>
+
+<div class="card">
+<h2>기준일 상한가 종목</h2>
+<div class="wrap"><table id="upper"></table></div>
+</div>
+
+<div class="card">
+<h2>규칙</h2>
+<ul>
+<li>감시 대상: 최근 5거래일 안에 상한가를 친 종목</li>
+<li>내일 5일선(예측) = (당일종가×2 + 전일 + 2일전 + 3일전 종가) ÷ 5</li>
+<li>1차매수가 = 예측 5일선 × 93.85%, 2차매수가 = 1차매수가 × 94.8%, 매도가 = 예측 5일선 (모두 호가단위 올림)</li>
+<li>이격률 = 종가 ÷ 금일 5일선 − 1. 상태: 매수선터치(전일 1차매수가 터치 &amp; 이격률 10% 미만) · 5일선근접(5% 미만) · 대기(10% 미만)</li>
+<li>제외: 이미 시세를 준 종목, 단일가 종목 — config.json 의 exclude_codes 에 종목코드를 넣으면 빠집니다</li>
+</ul>
+</div>
+</main>
+<script>
+const won = v => (v===null||v===undefined||v==='') ? '-' : Number(v).toLocaleString('ko-KR');
+const pct = v => (v===null||v===undefined||v==='') ? '' : (v>0?'+':'') + (v*100).toFixed(1) + '%';
+const cls = v => v>0 ? 'up' : (v<0 ? 'down' : '');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function links(c){
+  const L = [
+    ['차트','https://www.tradingview.com/chart/?symbol=KRX%3A'+c],
+    ['Naver','https://finance.naver.com/item/main.naver?code='+c],
+    ['Infostock','http://m.infostock.co.kr/3d/3d_show.asp?codename='+c],
+    ['Newsy','https://rank.newsystock.com/NewsyRank/StockAnalysis/StockAnalysis.aspx?SCode=A'+c],
+    ['FnGuide','https://comp.fnguide.com/SVO/WooriRenewal/Snapshot.asp?pGB=12&gicode=A'+c],
+    ['Daum','https://finance.daum.net/quotes/A'+c],
+    ['삼성','https://www.samsungpop.com/ux/kor/trading/marketStock/analysis/company/analysisOnestop.do?stockSymbolCd='+c]];
+  return L.map(([t,u]) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join('');
+}
+fetch('data/latest.json?t=' + Date.now()).then(r => r.json()).then(d => {
+  document.getElementById('meta').textContent = `기준일 ${d.date} 종가 · 갱신 ${d.generated_at}`;
+  document.getElementById('cnt').textContent = d.signals.length + '종목';
+  const head = ['종목','상한가일','종가','1차매수가','2차매수가','5일선(매도)','이격률','전일 매매가 터치','상태','분석 사이트'];
+  let h = '<tr>' + head.map(x => `<th>${x}</th>`).join('') + '</tr>';
+  for (const s of d.signals) {
+    const touch = [s.touch_buy1 && '1차', s.touch_buy2 && '2차', s.touch_sell && '5일선'].filter(Boolean).join('·');
+    h += `<tr class="${s.status==='매수선터치'?'hit':''}">
+      <td>${esc(s.name)}<b class="code">${esc(s.code)}</b></td>
+      <td>${esc(s.limit_date).slice(5)}${s.limit_count>1?' ×'+s.limit_count:''}</td>
+      <td>${won(s.close)}</td>
+      <td>${won(s.buy1)}<span class="pct">${pct(s.buy1_pct)}</span></td>
+      <td>${won(s.buy2)}<span class="pct">${pct(s.buy2_pct)}</span></td>
+      <td>${won(s.sell)}<span class="pct">${pct(s.sell_pct)}</span></td>
+      <td class="${cls(s.gap)}">${pct(s.gap)||'-'}</td>
+      <td>${touch||'-'}</td>
+      <td>${s.status?`<span class="tag">${esc(s.status)}</span>`:'-'}</td>
+      <td class="l links">${links(esc(s.code))}</td></tr>`;
+  }
+  if (!d.signals.length) h += '<tr><td colspan="10" class="l">감시 종목이 없습니다.</td></tr>';
+  document.getElementById('sig').innerHTML = h;
+  let u = '<tr><th>종목</th><th>시장</th><th>연속</th><th>누적</th><th>종가</th><th>등락률</th><th>거래량</th><th>시가</th><th>저가</th></tr>';
+  for (const r of d.upper_today)
+    u += `<tr><td>${esc(r.name)}<b class="code">${esc(r.code)}</b></td><td>${esc(r.market)}</td><td>${esc(r.streak)}</td><td>${esc(r.total)}</td>
+      <td>${won(r.close)}</td><td class="up">${r.pct?'+'+r.pct+'%':''}</td><td>${won(r.volume)}</td><td>${won(r.open)}</td><td>${won(r.low)}</td></tr>`;
+  if (!d.upper_today.length) u += '<tr><td colspan="9" class="l">상한가 종목이 없습니다.</td></tr>';
+  document.getElementById('upper').innerHTML = u;
+  if (d.errors && d.errors.length) document.getElementById('err').textContent = '수집 오류: ' + d.errors.join(' / ');
+}).catch(() => { document.getElementById('meta').textContent = '아직 데이터가 없습니다. 첫 배치가 돌면 표시됩니다.'; });
+</script>
+</body>
+</html>
