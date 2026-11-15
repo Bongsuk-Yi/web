@@ -1,7 +1,8 @@
 """구글 시트(5dol)에 행을 직접 쌓는다.
 
 - 상한가DB / 매매가이력 탭: 시트에 없는 날짜의 행만 맨 아래에 추가(누적)
-- 매매가 탭: 최신 기준일 값으로 교체
+- 매매가 탭: 최신 기준일 행을 맨 아래에 추가
+기존 행은 지우거나 덮어쓰지 않는다(APPEND 전용).
 환경변수 GSHEET_SA_KEY(서비스 계정 JSON 키)가 없으면 아무것도 하지 않는다.
 """
 import csv
@@ -100,9 +101,6 @@ class Sheet:
         return self._call("GET", f"/values/{self._rng(tab, a1)}", params={
             "valueRenderOption": render, "dateTimeRenderOption": "SERIAL_NUMBER"}).get("values", [])
 
-    def clear(self, tab):
-        self._call("POST", f"/values/{self._rng(tab, 'A:Z')}:clear", json={})
-
     def put(self, tab, rows):
         self._call("PUT", f"/values/{self._rng(tab, 'A1')}",
                    params={"valueInputOption": "USER_ENTERED"}, json={"values": rows})
@@ -114,26 +112,20 @@ class Sheet:
 
 
 def sync_log(sh, tab, records, ko):
-    """누적 탭: 시트에 없는 날짜의 행만 추가. 추가한 행 수를 돌려준다."""
+    """시트에 행을 APPEND만 한다(기존 행은 지우거나 덮어쓰지 않음).
+    A열(날짜)에 이미 있는 날짜의 행은 건너뛰어 같은 날 여러 번 돌려도 중복되지 않는다.
+    추가한 행 수를 돌려준다."""
     header = list(ko.values())
-    a1 = sh.get(tab, "A1", render="FORMULA")
-    first = str(a1[0][0]) if a1 and a1[0] else ""
-    if first != header[0]:           # 비어 있거나 IMPORTDATA 수식이면 새로 시작
-        sh.clear(tab)
-        sh.put(tab, [header])
+    col_a = [r[0] if r else "" for r in sh.get(tab, "A:A")]
+    if not any(str(v).strip() for v in col_a):   # 빈 탭이면 머리글만 한 번 쓴다
+        sh.append(tab, [header])
         have = set()
     else:
-        have = {iso(r[0]) for r in sh.get(tab, "A2:A") if r}
+        have = {iso(v) for v in col_a if str(v).strip() and v != header[0]}
     new = sorted((r for r in records if r["date"] not in have), key=lambda r: r["date"])
     if new:
         sh.append(tab, to_rows(new, ko))
     return len(new)
-
-
-def sync_latest(sh, tab, records, ko):
-    sh.clear(tab)
-    sh.put(tab, [list(ko.values())] + to_rows(records, ko))
-    return len(records)
 
 
 def run(session, sheet_id):
@@ -143,7 +135,7 @@ def run(session, sheet_id):
     latest_date = max((r["date"] for r in signals), default=None)
     n1 = sync_log(sh, "상한가DB", read_csv("upper_limit.csv"), UPPER_KO)
     n2 = sync_log(sh, "매매가이력", signals, SIGNAL_KO)
-    n3 = sync_latest(sh, "매매가", [r for r in signals if r["date"] == latest_date], SIGNAL_KO)
+    n3 = sync_log(sh, "매매가", [r for r in signals if r["date"] == latest_date], SIGNAL_KO)
     keys = list(SIGNAL_KO)
     formats = ([(keys.index(k), "PERCENT", "0.0%") for k in PCT_KEYS]
                + [(keys.index(k), "NUMBER", "#,##0") for k in WON_KEYS])
@@ -153,7 +145,7 @@ def run(session, sheet_id):
     sh.format_columns("상한가DB", [(ukeys.index(k), "NUMBER", "#,##0") for k in UPPER_WON_KEYS]
                       # 등락률은 29.92 처럼 퍼센트 숫자로 저장돼 있으므로 값은 두고 % 기호만 붙인다
                       + [(ukeys.index("pct"), "NUMBER", '0.00"%"')])
-    print(f"시트 반영: 상한가DB +{n1}행, 매매가이력 +{n2}행, 매매가 {n3}행")
+    print(f"시트 반영(APPEND): 상한가DB +{n1}행, 매매가이력 +{n2}행, 매매가 +{n3}행")
 
 
 def main():
